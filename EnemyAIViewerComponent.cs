@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 namespace EnemyAIViewer;
 public class EnemyAIViewerComponent : LocalComponent
 {
-    private bool uiShow = true;
+    private bool showUI = true;
     private EnemyAIViewerManager manager;
     private readonly MutableString enemyInfo = new MutableString(3000, true);
     private string enemyInfoStr = string.Empty;
@@ -23,7 +23,7 @@ public class EnemyAIViewerComponent : LocalComponent
 
     public sealed override void OnGUI()
     {
-        if (Event.current.type == EventType.Repaint && (this.uiShow))
+        if (Event.current.type == EventType.Repaint && (this.showUI) && this.MainContextValid())
         {
             Color contentColor = GUI.contentColor;
             bool wordWrap = GUI.skin.box.wordWrap;
@@ -35,7 +35,7 @@ public class EnemyAIViewerComponent : LocalComponent
             GUI.skin.label.fontSize = 20;
             GUI.skin.label.fontStyle = FontStyle.Bold;
             GUI.skin.label.alignment = TextAnchor.UpperLeft;
-            if (this.uiShow)
+            if (this.showUI)
             {
                 Texture2D boxBG = new Texture2D(1, 1, TextureFormat.RGBAFloat, false);
                 Rect position = new Rect(320f, 10f, 600f, 400f);
@@ -53,6 +53,17 @@ public class EnemyAIViewerComponent : LocalComponent
 
     public sealed override void Update()
     {
+
+        if (!this.MainContextValid())
+        {
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.BackQuote))
+        {
+            this.showUI = !this.showUI;
+        }
+        
         this.SampleData();
     }
 
@@ -102,6 +113,16 @@ public class EnemyAIViewerComponent : LocalComponent
         this.manager.SceneLoaded -= this.SceneLoaded;
 
     }
+
+    public bool MainContextValid()
+		{
+        return Application.isPlaying &&
+        this.manager.activeScene != string.Empty &&
+        this.manager.activeScene != "Pre_Menu_Loader" &&
+        this.manager.activeScene != "Pre_Menu_Intro" &&
+        this.manager.activeScene != "Menu_Title" &&
+        this.manager.activeScene != "Quit_To_Menu";
+		}
 
     private void ActiveSceneChanged(Scene from, Scene to)
     {

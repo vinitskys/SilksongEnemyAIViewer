@@ -7,6 +7,8 @@ public class EnemyAIViewerManager : ComponentManager
     public event ActiveSceneChanged ActiveSceneChanged;
     public event SceneLoaded SceneLoaded;
 
+    public string activeScene;
+
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         base.Logger.Message($"AI: Scene loaded: {scene.name}");
@@ -19,6 +21,9 @@ public class EnemyAIViewerManager : ComponentManager
     private void OnActiveSceneChanged(Scene from, Scene to)
     {
         base.Logger.Message("AI: Scene change: " + from.name + " -> " + to.name);
+
+        this.activeScene = to.name;
+
         if (this.ActiveSceneChanged != null)
         {
             this.ActiveSceneChanged(from, to);
