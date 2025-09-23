@@ -1,3 +1,4 @@
+using InUCS;
 using InUCS.Components;
 using HutongGames.PlayMaker;
 using InUCS.Addons;
@@ -5,6 +6,7 @@ using System.Collections.Generic;
 
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Linq;
 
 namespace EnemyAIViewer;
 public class EnemyAIViewerComponent : LocalComponent
@@ -13,6 +15,10 @@ public class EnemyAIViewerComponent : LocalComponent
     private EnemyAIViewerManager manager;
     private readonly MutableString enemyInfo = new MutableString(3000, true);
     private string enemyInfoStr = string.Empty;
+
+    public Matrix4x4 origMatrix;
+
+    public Matrix4x4 scaledMatrix;
 
     private List<HealthManager> hmCache = new List<HealthManager>(100);
 
@@ -23,6 +29,10 @@ public class EnemyAIViewerComponent : LocalComponent
 
     public sealed override void OnGUI()
     {
+        
+        this.origMatrix = GUI.matrix;
+        GUI.matrix = this.scaledMatrix;
+
         if (Event.current.type == EventType.Repaint && (this.showUI) && this.MainContextValid())
         {
             Color contentColor = GUI.contentColor;
@@ -35,20 +45,24 @@ public class EnemyAIViewerComponent : LocalComponent
             GUI.skin.label.fontSize = 20;
             GUI.skin.label.fontStyle = FontStyle.Bold;
             GUI.skin.label.alignment = TextAnchor.UpperLeft;
-            if (this.showUI)
-            {
-                Texture2D boxBG = new Texture2D(1, 1, TextureFormat.RGBAFloat, false);
-                Rect position = new Rect(320f, 10f, 600f, 400f);
-                GUI.DrawTexture(position, boxBG, ScaleMode.StretchToFill, false, 1f, new Color(0f, 0f, 0f, 0.9f), 0f, 0f);
-                GUI.Label(position, this.enemyInfoStr);
-            }
-            
+
+            int lineCount = this.enemyInfoStr.Count(c => c == '\n');
+
+            float boxHeight = (float)(25 * (lineCount));
+            float boxWidth = 400f;
+
+            Texture2D boxBG = new Texture2D(1, 1, TextureFormat.RGBAFloat, false);
+            Rect position = new Rect(320f, 10f, boxWidth, boxHeight);
+            GUI.DrawTexture(position, boxBG, ScaleMode.StretchToFill, false, 1f, new Color(0f, 0f, 0f, 0.9f), 0f, 0f);
+            GUI.Label(position, this.enemyInfoStr);
+
             GUI.skin.label.wordWrap = wordWrap;
             GUI.skin.label.fontSize = fontSize;
             GUI.skin.label.fontStyle = fontStyle;
             GUI.skin.label.alignment = alignment;
             GUI.contentColor = contentColor;
         }
+        GUI.matrix = this.origMatrix;
     }
 
     public sealed override void Update()
@@ -62,6 +76,11 @@ public class EnemyAIViewerComponent : LocalComponent
         if (Input.GetKeyDown(this.manager.GlobalConfig.ToggleUIKeybind.Value))
         {
             this.showUI = !this.showUI;
+
+            if (this.showUI)
+            {
+                ScreenHelper.CalculateMatrixInLine(ref this.scaledMatrix, (float)Screen.width, (float)Screen.height);
+            }
         }
         
         this.SampleData();
@@ -69,7 +88,7 @@ public class EnemyAIViewerComponent : LocalComponent
 
     private void SampleData()
     {
-        this.enemyInfo.Append("Enemy AI Information: \n");
+        this.enemyInfo.Append("Enemy AI Information: \n\n");
         for (int i = 0; i < this.hmCache.Count; i++)
         {
             HealthManager hm = this.hmCache[i];
@@ -100,6 +119,8 @@ public class EnemyAIViewerComponent : LocalComponent
 
     public override void OnComponentEnable()
     {
+        ScreenHelper.CalculateMatrixInLine(ref this.scaledMatrix, (float)Screen.width, (float)Screen.height);
+
         base.OnComponentEnable();
         this.manager.ActiveSceneChanged += this.ActiveSceneChanged;
         this.manager.SceneLoaded += this.SceneLoaded;
