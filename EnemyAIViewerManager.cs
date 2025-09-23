@@ -1,4 +1,5 @@
 using InUCS;
+using BepInEx.Configuration;
 using UnityEngine.SceneManagement;
 
 namespace EnemyAIViewer;
@@ -6,6 +7,15 @@ public class EnemyAIViewerManager : ComponentManager
 {
     public event ActiveSceneChanged ActiveSceneChanged;
     public event SceneLoaded SceneLoaded;
+
+    public GlobalConfig GlobalConfig { get; private set; }
+    public ConfigFile BepinConf
+    {
+        get
+        {
+            return EnemyAIViewer.PersistentConfig;
+        }
+    }
 
     public string activeScene;
 
@@ -59,6 +69,8 @@ public class EnemyAIViewerManager : ComponentManager
 
     private new void Awake()
     {
+        this.GlobalConfig = new GlobalConfig(this.BepinConf);
+
         this.SpawnComponents();
         base.Awake();
     }

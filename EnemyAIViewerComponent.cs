@@ -59,7 +59,7 @@ public class EnemyAIViewerComponent : LocalComponent
             return;
         }
 
-        if (Input.GetKeyDown(KeyCode.BackQuote))
+        if (Input.GetKeyDown(this.manager.GlobalConfig.ToggleUIKeybind.Value))
         {
             this.showUI = !this.showUI;
         }
