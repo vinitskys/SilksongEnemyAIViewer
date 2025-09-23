@@ -1,12 +1,12 @@
 using InUCS;
 using InUCS.Components;
-using HutongGames.PlayMaker;
 using InUCS.Addons;
 using System.Collections.Generic;
 
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace EnemyAIViewer;
 public class EnemyAIViewerComponent : LocalComponent
@@ -86,6 +86,43 @@ public class EnemyAIViewerComponent : LocalComponent
         this.SampleData();
     }
 
+    List<string> nonactiveActiveStates = [
+        "Fly In Ready" // HHG pre-spawn
+    ];
+
+    List<string> enemiesToIgnore = [
+        "MossBone Cocoon"
+    ];
+
+    Dictionary<string, string> enemiesWithUniqueFSMs = new Dictionary<string, string> {
+        {"Song Pilgrim", "Attack"},
+        {"MossBone Crawler", "Noise Reaction"}
+    };
+
+    Dictionary<string, List<string>> enemiesWithMultipleFSMs = new Dictionary<string, List<string>> {
+        {"Silk Boss", ["Attack Control", "Control"]}
+    };
+
+    private string cleanSpeciesName(string name)
+    {
+        name = Regex.Replace(name, @"\(\d+\)", ""); // remove (1) at the end
+        name = Regex.Replace(name, @"\d+", ""); // remove 01 at the end
+
+        name = name.Trim();
+        return name;
+    }
+
+    private void extractFsmInfo(string label, PlayMakerFSM fsm)
+    {
+        if (fsm != null && fsm.Active)
+        {
+            if (!nonactiveActiveStates.Contains(fsm.ActiveStateName))
+            {
+                this.enemyInfo.Append($"{label}: {fsm.ActiveStateName}\n");
+            }
+        }
+    }
+
     private void SampleData()
     {
         this.enemyInfo.Append("Enemy AI Information: \n\n");
@@ -95,22 +132,34 @@ public class EnemyAIViewerComponent : LocalComponent
             if (hm != null && hm.gameObject.activeSelf && hm.gameObject.activeInHierarchy)
             {
                 GameObject enemy = hm.gameObject;
+                string enemySpecies = this.cleanSpeciesName(enemy.name);
+                PlayMakerFSM fsm;
 
-                PlayMakerFSM fsm = enemy.LocateMyFSM("Control");
-
-                if (fsm == null){
-                    fsm = enemy.LocateMyFSM("Attack"); // Song Pilgram
-                }
-
-                if (fsm != null && fsm.Active)
+                if (this.enemiesToIgnore.Contains(enemySpecies))
                 {
-
-                    // HHG State mobs have before spawning
-                    if (fsm.ActiveStateName != "Fly In Ready")
-                    {
-                        this.enemyInfo.Append($"{enemy.name}: {fsm.ActiveStateName}\n");
-                    }
+                    continue;
                 }
+
+                if (this.enemiesWithMultipleFSMs.ContainsKey(enemySpecies))
+                {
+                    List<string> fsmNames = this.enemiesWithMultipleFSMs[enemySpecies];
+                    foreach (string fsmName in fsmNames)
+                    {
+                        fsm = enemy.LocateMyFSM(fsmName);
+                        this.extractFsmInfo(fsmName, fsm);
+                    }
+                    continue;
+                }
+
+                if (this.enemiesWithUniqueFSMs.ContainsKey(enemySpecies))
+                {
+                    fsm = enemy.LocateMyFSM(this.enemiesWithUniqueFSMs[enemySpecies]);
+                } else
+                {
+                    fsm = enemy.LocateMyFSM("Control");
+                }
+
+                this.extractFsmInfo(enemy.name, fsm);
             }
         }
 
