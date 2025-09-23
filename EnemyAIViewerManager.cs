@@ -70,7 +70,6 @@ public class EnemyAIViewerManager : ComponentManager
     private new void Awake()
     {
         this.GlobalConfig = new GlobalConfig(this.BepinConf);
-
         this.SpawnComponents();
         base.Awake();
     }

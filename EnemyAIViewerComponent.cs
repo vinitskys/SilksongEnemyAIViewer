@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace EnemyAIViewer;
+
 public class EnemyAIViewerComponent : LocalComponent
 {
     private bool showUI = true;
@@ -29,7 +30,7 @@ public class EnemyAIViewerComponent : LocalComponent
 
     public sealed override void OnGUI()
     {
-        
+
         this.origMatrix = GUI.matrix;
         GUI.matrix = this.scaledMatrix;
 
@@ -82,7 +83,7 @@ public class EnemyAIViewerComponent : LocalComponent
                 ScreenHelper.CalculateMatrixInLine(ref this.scaledMatrix, (float)Screen.width, (float)Screen.height);
             }
         }
-        
+
         this.SampleData();
     }
 
@@ -96,7 +97,9 @@ public class EnemyAIViewerComponent : LocalComponent
 
     Dictionary<string, string> enemiesWithUniqueFSMs = new Dictionary<string, string> {
         {"Song Pilgrim", "Attack"},
-        {"MossBone Crawler", "Noise Reaction"}
+        {"MossBone Crawler", "Noise Reaction"},
+        {"MossBone Crawler Summon", "Noise Reaction"}
+
     };
 
     Dictionary<string, List<string>> enemiesWithMultipleFSMs = new Dictionary<string, List<string>> {
@@ -154,7 +157,8 @@ public class EnemyAIViewerComponent : LocalComponent
                 if (this.enemiesWithUniqueFSMs.ContainsKey(enemySpecies))
                 {
                     fsm = enemy.LocateMyFSM(this.enemiesWithUniqueFSMs[enemySpecies]);
-                } else
+                }
+                else
                 {
                     fsm = enemy.LocateMyFSM("Control");
                 }
@@ -173,7 +177,6 @@ public class EnemyAIViewerComponent : LocalComponent
         base.OnComponentEnable();
         this.manager.ActiveSceneChanged += this.ActiveSceneChanged;
         this.manager.SceneLoaded += this.SceneLoaded;
-
     }
 
     public override void OnComponentDisable()
@@ -181,18 +184,17 @@ public class EnemyAIViewerComponent : LocalComponent
         base.OnComponentDisable();
         this.manager.ActiveSceneChanged -= this.ActiveSceneChanged;
         this.manager.SceneLoaded -= this.SceneLoaded;
-
     }
 
     public bool MainContextValid()
-		{
+    {
         return Application.isPlaying &&
         this.manager.activeScene != string.Empty &&
         this.manager.activeScene != "Pre_Menu_Loader" &&
         this.manager.activeScene != "Pre_Menu_Intro" &&
         this.manager.activeScene != "Menu_Title" &&
         this.manager.activeScene != "Quit_To_Menu";
-		}
+    }
 
     private void ActiveSceneChanged(Scene from, Scene to)
     {
@@ -203,13 +205,19 @@ public class EnemyAIViewerComponent : LocalComponent
             UnityEngine.Object.FindObjectsByType<HealthManager>(
                 FindObjectsInactive.Include, FindObjectsSortMode.InstanceID
         ));
-    } 
+    }
 
     private void SceneLoaded(Scene from, LoadSceneMode mode)
     {
-        this.hmCache.AddRange(
-            UnityEngine.Object.FindObjectsByType<HealthManager>(
+        HealthManager[] hmList = UnityEngine.Object.FindObjectsByType<HealthManager>(
                 FindObjectsInactive.Include, FindObjectsSortMode.InstanceID
-        ));
-    } 
+        );
+
+        foreach (HealthManager hm in hmList) {
+            if (!this.hmCache.Contains(hm))
+            {
+                this.hmCache.Add(hm);
+            }
+        }
+    }
 }
