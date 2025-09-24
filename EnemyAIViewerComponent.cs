@@ -13,6 +13,9 @@ namespace EnemyAIViewer;
 public class EnemyAIViewerComponent : LocalComponent
 {
     private bool showUI = true;
+    private bool isBossRoom = false;
+    private BossInfo bossInfo;
+
     private EnemyAIViewerManager manager;
     private readonly MutableString enemyInfo = new MutableString(3000, true);
     private string enemyInfoStr = string.Empty;
@@ -49,7 +52,7 @@ public class EnemyAIViewerComponent : LocalComponent
 
             int lineCount = this.enemyInfoStr.Count(c => c == '\n');
 
-            float boxHeight = (float)(25 * (lineCount));
+            float boxHeight = (float)(30 * (lineCount) + 300);
             float boxWidth = 400f;
 
             Texture2D boxBG = new Texture2D(1, 1, TextureFormat.RGBAFloat, false);
@@ -84,27 +87,13 @@ public class EnemyAIViewerComponent : LocalComponent
             }
         }
 
-        this.SampleData();
+        if (this.isBossRoom)
+        {
+            this.DisplayBossInfo();
+        } else {
+            this.DisplayNonBossInfo();
+        }
     }
-
-    List<string> nonactiveActiveStates = [
-        "Fly In Ready" // HHG pre-spawn
-    ];
-
-    List<string> enemiesToIgnore = [
-        "MossBone Cocoon"
-    ];
-
-    Dictionary<string, string> enemiesWithUniqueFSMs = new Dictionary<string, string> {
-        {"Song Pilgrim", "Attack"},
-        {"MossBone Crawler", "Noise Reaction"},
-        {"MossBone Crawler Summon", "Noise Reaction"}
-
-    };
-
-    Dictionary<string, List<string>> enemiesWithMultipleFSMs = new Dictionary<string, List<string>> {
-        {"Silk Boss", ["Attack Control", "Control"]}
-    };
 
     private string cleanSpeciesName(string name)
     {
@@ -119,14 +108,19 @@ public class EnemyAIViewerComponent : LocalComponent
     {
         if (fsm != null && fsm.Active)
         {
-            if (!nonactiveActiveStates.Contains(fsm.ActiveStateName))
+            if (!EnemyStore.nonactiveActiveStates.Contains(fsm.ActiveStateName))
             {
                 this.enemyInfo.Append($"{label}: {fsm.ActiveStateName}\n");
             }
         }
     }
 
-    private void SampleData()
+    private void DisplayBossInfo()
+    {
+        this.enemyInfoStr = this.bossInfo.GetInfo();
+    }
+
+    private void DisplayNonBossInfo()
     {
         this.enemyInfo.Append("Enemy AI Information: \n\n");
         for (int i = 0; i < this.hmCache.Count; i++)
@@ -138,14 +132,14 @@ public class EnemyAIViewerComponent : LocalComponent
                 string enemySpecies = this.cleanSpeciesName(enemy.name);
                 PlayMakerFSM fsm;
 
-                if (this.enemiesToIgnore.Contains(enemySpecies))
+                if (EnemyStore.enemiesToIgnore.Contains(enemySpecies))
                 {
                     continue;
                 }
 
-                if (this.enemiesWithMultipleFSMs.ContainsKey(enemySpecies))
+                if (EnemyStore.enemiesWithMultipleFSMs.ContainsKey(enemySpecies))
                 {
-                    List<string> fsmNames = this.enemiesWithMultipleFSMs[enemySpecies];
+                    List<string> fsmNames = EnemyStore.enemiesWithMultipleFSMs[enemySpecies];
                     foreach (string fsmName in fsmNames)
                     {
                         fsm = enemy.LocateMyFSM(fsmName);
@@ -154,9 +148,9 @@ public class EnemyAIViewerComponent : LocalComponent
                     continue;
                 }
 
-                if (this.enemiesWithUniqueFSMs.ContainsKey(enemySpecies))
+                if (EnemyStore.enemiesWithUniqueFSMs.ContainsKey(enemySpecies))
                 {
-                    fsm = enemy.LocateMyFSM(this.enemiesWithUniqueFSMs[enemySpecies]);
+                    fsm = enemy.LocateMyFSM(EnemyStore.enemiesWithUniqueFSMs[enemySpecies]);
                 }
                 else
                 {
@@ -196,15 +190,41 @@ public class EnemyAIViewerComponent : LocalComponent
         this.manager.activeScene != "Quit_To_Menu";
     }
 
+    private void setBossSceneStatus()
+    {
+
+        foreach (HealthManager hm in this.hmCache)
+        {
+
+            if (hm == null)
+            {
+                continue;
+            }
+
+            if (EnemyStore.BossNameList.Contains(hm.gameObject.name))
+            {
+                this.isBossRoom = true;
+                this.bossInfo = new BossInfo(this.manager, hm);
+
+                break;
+            }
+        }
+        
+        
+    }
+
     private void ActiveSceneChanged(Scene from, Scene to)
     {
         base.Logger.Info("HealthManager cache cleared");
 
         this.hmCache.Clear();
+
         this.hmCache.AddRange(
             UnityEngine.Object.FindObjectsByType<HealthManager>(
                 FindObjectsInactive.Include, FindObjectsSortMode.InstanceID
         ));
+
+        this.setBossSceneStatus();
     }
 
     private void SceneLoaded(Scene from, LoadSceneMode mode)
@@ -213,11 +233,14 @@ public class EnemyAIViewerComponent : LocalComponent
                 FindObjectsInactive.Include, FindObjectsSortMode.InstanceID
         );
 
-        foreach (HealthManager hm in hmList) {
+        foreach (HealthManager hm in hmList)
+        {
             if (!this.hmCache.Contains(hm))
             {
                 this.hmCache.Add(hm);
             }
         }
+        
+        this.setBossSceneStatus();
     }
 }
