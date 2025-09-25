@@ -19,13 +19,13 @@ public class BossInfo
 
     int maxHp;
 
-    public BossInfo(EnemyAIViewerManager manager, HealthManager hm)
+    public BossInfo(EnemyAIViewerManager manager, GameObject boss)
     {
         this.manager = manager;
-        this.hm = hm;
+        this.boss = boss;
 
-        this.bossName = hm.gameObject.name;
-        this.boss = hm.gameObject;
+        this.bossName = this.boss.name;
+        this.hm = this.boss.GetComponent("HealthManager") as HealthManager;
         this.fsm = this.boss.LocateMyFSM("Control");
 
         this.maxHp = this.hm.hp;

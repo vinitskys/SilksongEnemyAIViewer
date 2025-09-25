@@ -5,28 +5,19 @@ namespace EnemyAIViewer;
 
 public class EnemyStore
 {
-    public static List<string> nonactiveActiveStates = [
-        "Fly In Ready" // HHG pre-spawn
-    ];
-
-    public static List<string> enemiesToIgnore = [
-        "MossBone Cocoon"
-    ];
-
-    public static Dictionary<string, string> enemiesWithUniqueFSMs = new Dictionary<string, string> {
-        {"Song Pilgrim", "Attack"},
-        {"MossBone Crawler", "Noise Reaction"},
-        {"MossBone Crawler Summon", "Noise Reaction"}
-
-    };
-
     public static Dictionary<string, List<string>> enemiesWithMultipleFSMs = new Dictionary<string, List<string>> {
         {"Silk Boss", ["Attack Control", "Control"]}
     };
 
     public static List<string> BossNameList = [
         "Bone Beast",
+        "Lace Boss1",
         "Vampire Gnat",
-        "Silk Boss"
+        "Spinner Boss",
+        "Phantom",
+        "Dancer Control", // needs work
+        "Trobbio",
+        "Lace Boss2",
+        "Silk Boss" //multiple FSMs
     ];
 }
