@@ -12,60 +12,84 @@ public class BossInfoHandler
 {
 
     EnemyAIViewerManager manager;
-    string bossName;
-    public GameObject boss;
-    HealthManager hm;
-    string[] fsmOwners;
-    PlayMakerFSM[] fsmList;
-    Logger logger = new Logger();
-
-    int maxHp;
+    List<string> bossNames;
+    public List<GameObject> bosses;
+    List<HealthManager> hms;
+    List<PlayMakerFSM> fsmList;
 
     public BossInfoHandler(EnemyAIViewerManager manager, GameObject boss)
     {
         this.manager = manager;
-        this.boss = boss;
 
-        this.bossName = this.boss.name;
-        this.hm = this.boss.GetComponent("HealthManager") as HealthManager;
+        this.bosses = new List<GameObject>();
+        this.bossNames = new List<string>();
+        this.hms = new List<HealthManager>();
+        this.fsmList = new List<PlayMakerFSM>();
 
-        BossMapping bm = BossStore.GetBossMappingIfExists(this.bossName);
+        this.manager.Logger.Info($"Creating Boss Info class for {boss.name}");
+
+        BossMapping bm = BossStore.GetBossMappingIfExists(boss.name);
         if (bm != null)
         {
-            this.fsmOwners = bm.entityNames;
-
-            this.fsmList = [];
-            for (int i = 0; i < this.fsmOwners.Count(); i++) {
-                string fsmName = bm.entityFSMs[i];
-                GameObject obj = GameObject.Find("");
+            // add boss object, name, and, hm 
+            for (int i = 0; i < bm.bossNames.Count(); i++)
+            {
+                GameObject obj = GameObject.Find(bm.bossNames[i]);
                 if (obj != null)
                 {
-                     this.fsmList.Append(obj.LocateMyFSM(fsmName));
+                    this.bossNames.Add(bm.bossNames[i]);
+                    this.bosses.Add(obj);
+                    this.hms.Add(obj.GetComponent("HealthManager") as HealthManager);
+                }
+            }
+
+            // add fsms
+            for (int i = 0; i < bm.entityNames.Count(); i++) {
+                string fsmName = bm.entityFSMs[i];
+                GameObject obj = GameObject.Find(bm.entityNames[i]);
+                if (obj != null)
+                {
+                    this.fsmList.Add(obj.LocateMyFSM(fsmName));
                 }
             }
         }
         else
         {
-            this.fsmOwners = [this.bossName];
-            this.fsmList = [this.boss.LocateMyFSM("Control")];
+            this.bosses.Add(boss);
+            this.bossNames.Add(boss.name);
+            this.hms.Add(boss.GetComponent("HealthManager") as HealthManager);
+            this.fsmList.Add(boss.LocateMyFSM("Control"));
         }
-        
-
-        this.maxHp = this.hm.hp;
-
-        this.manager.Logger.Info($"Creating Boss Info class for {this.bossName}");
     }
 
-    public string GetInfo()
-    { 
-        MutableString info = new MutableString(500, true);
-
+    public bool HasActiveBosses()
+    {
+        foreach (GameObject boss in this.bosses)
         {
-        if (this.hm.hp == 0)
-            return "ENEMY SLAIN";
+            if (boss is not null)
+            {
+                if (boss.activeSelf || boss.activeInHierarchy)
+                {
+                    return true;
+                }
+            }
         }
 
-        info.Append($"{this.boss.name}: \n\n");
+        // none actiive!
+        return false;
+    }
+    public string GetInfo()
+    {
+        MutableString info = new MutableString(500, true);
+
+        foreach (HealthManager hm in hms)
+        {
+            if (hm.hp > 0)
+            {
+                break;
+            }
+            return "YOU DEFEATED"; // all are zero
+        }
 
         info.Append(this.GetLogisticInfo()).Append("\n");
         info.Append(this.GetAttackInfo());
@@ -76,20 +100,33 @@ public class BossInfoHandler
     public string GetLogisticInfo()
     {
         string info = "";
+        
+        // multiple bosses? less detailed info
+        if (this.bosses.Count() > 1)
+        {
+            foreach (HealthManager hm in this.hms)
+            {
+                info += $"{hm.gameObject.name}: {hm.hp} HP\n";
+            }
+            return info;
+        }
+
+        // one boss? detailed info
+        GameObject boss = this.bosses[0];
 
         // standalone
-
-        string dir = this.boss.transform.GetScaleX() == -1 ? "Left" : "Right";
-
-        info += $"HP: {this.hm.hp} / {this.maxHp}\n";
-        info += $"x: {this.boss.transform.position.x:F2}, y: {this.boss.transform.position.y:F2}\n";
+        string dir = boss.transform.GetScaleX() == -1 ? "Left" : "Right";
+       
+        info += $"{this.bossNames[0]} \n\n";
+        
+        info += $"HP: {hms[0].hp}\n";
+        info += $"x: {boss.transform.position.x:F2}, y: {boss.transform.position.y:F2}\n";
         info += $"Facing: {dir}\n";
 
         // relative to hornet
-
         GameObject hero = GameObject.Find("Hero_Hornet(Clone)");
-        float xDist = this.boss.transform.position.x - hero.transform.position.x;
-        float yDist = this.boss.transform.position.y - hero.transform.position.y;
+        float xDist = boss.transform.position.x - hero.transform.position.x;
+        float yDist = boss.transform.position.y - hero.transform.position.y;
         bool facingHero = xDist > 0 ? dir == "Left" : dir == "Right";
 
         info += $"\nDistance to Hornet: \n";
@@ -116,14 +153,14 @@ public class BossInfoHandler
     {
         string info = "";
 
-        for (int i = 0; i < this.fsmOwners.Count(); i++)
+        for (int i = 0; i < this.fsmList.Count(); i++)
         {
-            string entityName = this.fsmOwners[i];
+            string entityName = this.fsmList[i].name;
+            string fsmName = this.fsmList[i].FsmName;
             FsmState activeState = this.fsmList[i].Fsm.ActiveState;
 
-            info += $"{entityName}: {activeState.Name}\n";
+            info += $"{entityName} [{fsmName}]: {activeState.Name}\n";
         }
-
 
         return info;
     }

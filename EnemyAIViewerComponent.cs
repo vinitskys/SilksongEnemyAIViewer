@@ -51,7 +51,7 @@ public class EnemyAIViewerComponent : LocalComponent
 
             int lineCount = this.bossInfoStr.Count(c => c == '\n');
             float boxHeight = (float)(30 * (lineCount) + 30);
-            float boxWidth = 400f;
+            float boxWidth = 500f;
 
             Texture2D boxBG = new Texture2D(1, 1, TextureFormat.RGBAFloat, false);
             Rect position = new Rect(320f, 10f, boxWidth, boxHeight);
@@ -85,16 +85,14 @@ public class EnemyAIViewerComponent : LocalComponent
             }
         }
 
-        if (this.bossInfo is null) {
-            this.DetermineBoss();
-        } else if (this.bossInfo.boss is null)
+        if (this.bossInfo is null)
         {
             this.DetermineBoss();
-        } else if (!this.bossInfo.boss.activeSelf || !this.bossInfo.boss.activeInHierarchy)
+        }
+        else if (!this.bossInfo.HasActiveBosses())
         {
             this.DetermineBoss();
-        } else
-        {
+        } else {
             this.GetBossInfo();
         }
     }
@@ -133,33 +131,34 @@ public class EnemyAIViewerComponent : LocalComponent
         this.manager.activeScene != "Quit_To_Menu";
     }
 
-
-
     public void DetermineBoss()
     {
         GameObject boss = null;
+        GameObject bossScene = null;
+        HealthManager[] hmList = null;
 
         // Automatically detect the boss!
-        GameObject bs = GameObject.Find("Boss Scene");
-        if (bs == null)
+        foreach (string bs in BossStore.BossScenes)
         {
-            bs = GameObject.Find("Boss Control"); // Lost Lace
-        }
-        if (bs != null)
-        {
-            HealthManager[] hmList = bs.GetComponentsInChildren<HealthManager>();
-
-            HealthManager best = hmList[0];
-            // enemy with the most HP is probably the boss
-            foreach (HealthManager hm in hmList)
+            bossScene = GameObject.Find(bs);
+            if (bossScene != null)
             {
-                if (hm.hp > best.hp)
-                {
-                    best = hm;
+                hmList = bossScene.GetComponentsInChildren<HealthManager>();
+                if (hmList != null && hmList.Count() > 0)
+                {           
+                    HealthManager best = hmList[0];
+                    // enemy with the most HP is probably the boss
+                    foreach (HealthManager hm in hmList)
+                    {
+                        if (hm.hp > best.hp)
+                        {   
+                            best = hm;
+                        }
+                    }
+
+                    boss = best.gameObject;
                 }
             }
-
-            boss = best.gameObject;
         }
 
         // Handle cases where scene name is not "Boss Scene"
@@ -182,7 +181,6 @@ public class EnemyAIViewerComponent : LocalComponent
                 this.bossInfo = new BossInfoHandler(this.manager, boss);
             }
         }
-        
     }
 
     private void ActiveSceneChanged(Scene from, Scene to)
