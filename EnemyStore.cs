@@ -17,7 +17,7 @@ public class EnemyStore
         "Phantom",
         "Dancer Control", // needs work
         "Trobbio",
-        "Lace Boss2",
+        "Lace Boss2 New",
         "Silk Boss" //multiple FSMs
     ];
 }

@@ -84,10 +84,17 @@ public class EnemyAIViewerComponent : LocalComponent
             }
         }
 
-        this.DisplayBossInfo();
+        if (this.bossInfo is null)
+        {
+            this.DetermineBoss();
+        }
+        else
+        {
+            this.GetBossInfo();
+        }
     }
 
-    public void DisplayBossInfo()
+    public void GetBossInfo()
     {
         if (this.bossInfo is not null)
         {
@@ -147,11 +154,11 @@ public class EnemyAIViewerComponent : LocalComponent
 
     private void ActiveSceneChanged(Scene from, Scene to)
     {
-        this.DetermineBoss();
+        // this.DetermineBoss();
     }
 
     private void SceneLoaded(Scene from, LoadSceneMode mode)
     {
-        this.DetermineBoss();
+        // this.DetermineBoss();
     }
 }
