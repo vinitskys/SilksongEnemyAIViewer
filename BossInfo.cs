@@ -12,7 +12,7 @@ public class BossInfo
 
     EnemyAIViewerManager manager;
     string bossName;
-    GameObject boss;
+    public GameObject boss;
     HealthManager hm;
     PlayMakerFSM fsm;
     Logger logger = new Logger();
