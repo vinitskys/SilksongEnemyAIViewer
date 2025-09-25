@@ -7,14 +7,12 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Diagnostics.CodeAnalysis;
 
 namespace EnemyAIViewer;
 
 public class EnemyAIViewerComponent : LocalComponent
 {
     private bool showUI = true;
-    private BossInfo bossInfo;
 
     private EnemyAIViewerManager manager;
     private readonly MutableString enemyInfo = new MutableString(3000, true);
@@ -87,20 +85,7 @@ public class EnemyAIViewerComponent : LocalComponent
             }
         }
 
-        HealthManager bossHm = this.GetBossSceneStatus();
-
-        if (bossHm is not null)
-        {
-            if (this.bossInfo is null)
-            {
-                this.bossInfo = new BossInfo(manager, bossHm);
-            }
-            this.DisplayBossInfo();
-        }
-        else
-        {
-            this.DisplayNonBossInfo();
-        }
+        this.DisplayEnemyInfo();
     }
 
     private string cleanSpeciesName(string name)
@@ -123,12 +108,7 @@ public class EnemyAIViewerComponent : LocalComponent
         }
     }
 
-    private void DisplayBossInfo()
-    {
-        this.enemyInfoStr = this.bossInfo.GetInfo();
-    }
-
-    private void DisplayNonBossInfo()
+    private void DisplayEnemyInfo()
     {
         this.enemyInfo.Append("Enemy AI Information: \n\n");
         for (int i = 0; i < this.hmCache.Count; i++)
@@ -196,26 +176,6 @@ public class EnemyAIViewerComponent : LocalComponent
         this.manager.activeScene != "Pre_Menu_Intro" &&
         this.manager.activeScene != "Menu_Title" &&
         this.manager.activeScene != "Quit_To_Menu";
-    }
-
-    private HealthManager GetBossSceneStatus()
-    {
-
-        foreach (HealthManager hm in this.hmCache)
-        {
-
-            if (hm == null)
-            {
-                continue;
-            }
-
-            if (EnemyStore.BossNameList.Contains(hm.gameObject.name))
-            {
-                return hm;
-            }
-        }
-
-        return null;
     }
 
     private void ActiveSceneChanged(Scene from, Scene to)
