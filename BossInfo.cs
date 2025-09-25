@@ -2,6 +2,8 @@ using UnityEngine;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using InUCS.Addons;
+using System.Linq;
+using System.ComponentModel.Design;
 
 namespace EnemyAIViewer;
 
@@ -22,8 +24,6 @@ public class BossInfo
         this.manager = manager;
         this.hm = hm;
 
-        this.manager.Logger.Message(hm.gameObject.name);
-
         this.bossName = hm.gameObject.name;
         this.boss = hm.gameObject;
         this.fsm = this.boss.LocateMyFSM("Control");
@@ -34,6 +34,11 @@ public class BossInfo
     public string GetInfo()
     { 
         MutableString info = new MutableString(500, true);
+
+        {
+        if (this.hm.hp == 0)
+            return "ENEMY SLAIN";
+        }
 
         info.Append($"{this.boss.name}: \n\n");
 
@@ -56,13 +61,106 @@ public class BossInfo
         return info;
     }
 
+    public FsmState TransitionViaEvent(FsmState fromState, FsmEvent trigger)
+    {
+        foreach (FsmTransition t in fromState.Transitions)
+        {
+            if (t.EventName == trigger.Name)
+            {
+                return t.ToFsmState;
+            }
+        }
+
+        return null;
+    }
+
     public string GetAttackInfo()
     {
         string info = "";
 
-        FsmState s = this.fsm.Fsm.ActiveState;
+        FsmState activeState = this.fsm.Fsm.ActiveState;
 
-        info += $"AI State: {s.Name}\n";
+        info += $"AI State: {activeState.Name}\n";
+
+        bool nextChoiceFound = false;
+        int statesChecked = 0;
+        FsmState candidateState = activeState;
+        while (!nextChoiceFound && (statesChecked < this.fsm.FsmStates.Count()))
+        {
+            break;
+            if (candidateState.Transitions.Count() == 0)
+            {
+                break; // dead end
+            }
+            else if (candidateState.Transitions.Count() == 1)
+            {
+                // only one next choice
+                candidateState = candidateState.Transitions[0].ToFsmState;
+                statesChecked++;
+            }
+            else if (candidateState.Transitions.Count() >= 2)
+            {
+                foreach (FsmStateAction a in candidateState.Actions)
+                {
+                    if (!a.Enabled)
+                    {
+                        continue;
+                    }
+
+                    if (a is CompareHP)
+                    {
+                        // determine which path to take from here
+                        // if none of these hit, we keep looking at this State's actions
+                        CompareHP b = a as CompareHP;
+
+                        if ((this.hm.hp == b.integer2.Value) && (b.equal is not null))
+                        {
+                            candidateState = this.TransitionViaEvent(candidateState, b.equal);
+                            continue;
+                        }
+                        else if ((this.hm.hp < b.integer2.Value) && (b.lessThan is not null))
+                        {
+                            candidateState = this.TransitionViaEvent(candidateState, b.lessThan);
+                            continue;
+                        }
+                        else if ((this.hm.hp > b.integer2.Value) && (b.greaterThan is not null))
+                        {
+                            candidateState = this.TransitionViaEvent(candidateState, b.greaterThan);
+                            continue;
+                        }
+                    }
+
+                    if (a is BoolTest)
+                    {
+                        BoolTest b = a as BoolTest;
+                        if ((b.boolVariable.Value) && (b.isTrue is not null))
+                        {
+                            candidateState = this.TransitionViaEvent(candidateState, b.isTrue);
+                            continue;
+                        }
+                        else if ((!b.boolVariable.Value) && (b.isFalse is not null))
+                        {
+                            candidateState = this.TransitionViaEvent(candidateState, b.isFalse);
+                            continue;
+                        }
+                    }
+
+                    if (a is SendRandomEventV2)
+                    {
+                        nextChoiceFound = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        FsmState nextStateWithChoice = candidateState;
+
+        if (nextChoiceFound)
+        {
+            info += $"Next State w/ Choice: {nextStateWithChoice.Name}\n";
+        }
+
 
         return info;
     }

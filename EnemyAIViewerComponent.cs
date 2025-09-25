@@ -7,13 +7,13 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Diagnostics.CodeAnalysis;
 
 namespace EnemyAIViewer;
 
 public class EnemyAIViewerComponent : LocalComponent
 {
     private bool showUI = true;
-    private bool isBossRoom = false;
     private BossInfo bossInfo;
 
     private EnemyAIViewerManager manager;
@@ -87,10 +87,18 @@ public class EnemyAIViewerComponent : LocalComponent
             }
         }
 
-        if (this.isBossRoom)
+        HealthManager bossHm = this.GetBossSceneStatus();
+
+        if (bossHm is not null)
         {
+            if (this.bossInfo is null)
+            {
+                this.bossInfo = new BossInfo(manager, bossHm);
+            }
             this.DisplayBossInfo();
-        } else {
+        }
+        else
+        {
             this.DisplayNonBossInfo();
         }
     }
@@ -190,7 +198,7 @@ public class EnemyAIViewerComponent : LocalComponent
         this.manager.activeScene != "Quit_To_Menu";
     }
 
-    private void setBossSceneStatus()
+    private HealthManager GetBossSceneStatus()
     {
 
         foreach (HealthManager hm in this.hmCache)
@@ -203,32 +211,28 @@ public class EnemyAIViewerComponent : LocalComponent
 
             if (EnemyStore.BossNameList.Contains(hm.gameObject.name))
             {
-                this.isBossRoom = true;
-                this.bossInfo = new BossInfo(this.manager, hm);
-
-                break;
+                return hm;
             }
         }
-        
-        
+
+        return null;
     }
 
     private void ActiveSceneChanged(Scene from, Scene to)
     {
-        base.Logger.Info("HealthManager cache cleared");
 
+        base.Logger.Info("HealthManager cache cleared");
         this.hmCache.Clear();
 
         this.hmCache.AddRange(
             UnityEngine.Object.FindObjectsByType<HealthManager>(
                 FindObjectsInactive.Include, FindObjectsSortMode.InstanceID
         ));
-
-        this.setBossSceneStatus();
     }
 
     private void SceneLoaded(Scene from, LoadSceneMode mode)
     {
+
         HealthManager[] hmList = UnityEngine.Object.FindObjectsByType<HealthManager>(
                 FindObjectsInactive.Include, FindObjectsSortMode.InstanceID
         );
@@ -237,10 +241,9 @@ public class EnemyAIViewerComponent : LocalComponent
         {
             if (!this.hmCache.Contains(hm))
             {
+                this.manager.Logger.Message($"Adding {hm.gameObject.name} to hm list...");
                 this.hmCache.Add(hm);
             }
         }
-        
-        this.setBossSceneStatus();
     }
 }

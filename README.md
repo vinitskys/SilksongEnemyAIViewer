@@ -11,3 +11,6 @@ TODO
 
 [1.0.0.0]
 - Project Created
+
+Known Bugs:
+* Warping out of a boss room break the UI for a moment. Reload tthe room, dying, or exiiting will fix it. 
