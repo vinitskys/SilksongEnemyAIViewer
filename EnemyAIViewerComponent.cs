@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Linq;
 using System.Text.RegularExpressions;
+using HutongGames.PlayMaker.Actions;
 
 namespace EnemyAIViewer;
 
@@ -16,7 +17,7 @@ public class EnemyAIViewerComponent : LocalComponent
 
     private EnemyAIViewerManager manager;
     private string bossInfoStr = string.Empty;
-    private BossInfo bossInfo;
+    private BossInfoHandler bossInfo;
 
     public Matrix4x4 origMatrix;
 
@@ -84,7 +85,12 @@ public class EnemyAIViewerComponent : LocalComponent
             }
         }
 
-        if ((this.bossInfo is null) || !this.bossInfo.boss.activeSelf)
+        if (this.bossInfo is null) {
+            this.DetermineBoss();
+        } else if (this.bossInfo.boss is null)
+        {
+            this.DetermineBoss();
+        } else if (!this.bossInfo.boss.activeSelf || !this.bossInfo.boss.activeInHierarchy)
         {
             this.DetermineBoss();
         } else
@@ -127,17 +133,56 @@ public class EnemyAIViewerComponent : LocalComponent
         this.manager.activeScene != "Quit_To_Menu";
     }
 
+
+
     public void DetermineBoss()
     {
-        foreach (string s in EnemyStore.BossNameList)
+        GameObject boss = null;
+
+        // Automatically detect the boss!
+        GameObject bs = GameObject.Find("Boss Scene");
+        if (bs == null)
         {
-            GameObject b = GameObject.Find(s);
-            if ((b is not null) && b.activeSelf)
+            bs = GameObject.Find("Boss Control"); // Lost Lace
+        }
+        if (bs != null)
+        {
+            HealthManager[] hmList = bs.GetComponentsInChildren<HealthManager>();
+
+            HealthManager best = hmList[0];
+            // enemy with the most HP is probably the boss
+            foreach (HealthManager hm in hmList)
             {
-                this.bossInfo = new BossInfo(this.manager, b);
-                return;
+                if (hm.hp > best.hp)
+                {
+                    best = hm;
+                }
+            }
+
+            boss = best.gameObject;
+        }
+
+        // Handle cases where scene name is not "Boss Scene"
+        if (boss is null)
+        { 
+            foreach (string s in BossStore.BossesWithUnusualSceneNames)
+            {
+                GameObject b = GameObject.Find(s);
+                if (b is not null)
+                {
+                    boss = b;
+                    break;
+                }
+        }
+        }
+
+        if (boss != null){
+            if (boss.activeSelf && boss.activeInHierarchy)
+            {
+                this.bossInfo = new BossInfoHandler(this.manager, boss);
             }
         }
+        
     }
 
     private void ActiveSceneChanged(Scene from, Scene to)

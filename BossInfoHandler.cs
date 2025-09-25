@@ -4,31 +4,56 @@ using HutongGames.PlayMaker.Actions;
 using InUCS.Addons;
 using System.Linq;
 using System.ComponentModel.Design;
+using System.Collections.Generic;
 
 namespace EnemyAIViewer;
 
-public class BossInfo
+public class BossInfoHandler
 {
 
     EnemyAIViewerManager manager;
     string bossName;
     public GameObject boss;
     HealthManager hm;
-    PlayMakerFSM fsm;
+    string[] fsmOwners;
+    PlayMakerFSM[] fsmList;
     Logger logger = new Logger();
 
     int maxHp;
 
-    public BossInfo(EnemyAIViewerManager manager, GameObject boss)
+    public BossInfoHandler(EnemyAIViewerManager manager, GameObject boss)
     {
         this.manager = manager;
         this.boss = boss;
 
         this.bossName = this.boss.name;
         this.hm = this.boss.GetComponent("HealthManager") as HealthManager;
-        this.fsm = this.boss.LocateMyFSM("Control");
+
+        BossMapping bm = BossStore.GetBossMappingIfExists(this.bossName);
+        if (bm != null)
+        {
+            this.fsmOwners = bm.entityNames;
+
+            this.fsmList = [];
+            for (int i = 0; i < this.fsmOwners.Count(); i++) {
+                string fsmName = bm.entityFSMs[i];
+                GameObject obj = GameObject.Find("");
+                if (obj != null)
+                {
+                     this.fsmList.Append(obj.LocateMyFSM(fsmName));
+                }
+            }
+        }
+        else
+        {
+            this.fsmOwners = [this.bossName];
+            this.fsmList = [this.boss.LocateMyFSM("Control")];
+        }
+        
 
         this.maxHp = this.hm.hp;
+
+        this.manager.Logger.Info($"Creating Boss Info class for {this.bossName}");
     }
 
     public string GetInfo()
@@ -42,7 +67,7 @@ public class BossInfo
 
         info.Append($"{this.boss.name}: \n\n");
 
-        info.Append(this.GetLogisticInfo()).Append("\n\n");
+        info.Append(this.GetLogisticInfo()).Append("\n");
         info.Append(this.GetAttackInfo());
 
         return info.Finalize();
@@ -52,11 +77,24 @@ public class BossInfo
     {
         string info = "";
 
+        // standalone
+
         string dir = this.boss.transform.GetScaleX() == -1 ? "Left" : "Right";
 
         info += $"HP: {this.hm.hp} / {this.maxHp}\n";
         info += $"x: {this.boss.transform.position.x:F2}, y: {this.boss.transform.position.y:F2}\n";
-        info += $"Facing: {dir}";
+        info += $"Facing: {dir}\n";
+
+        // relative to hornet
+
+        GameObject hero = GameObject.Find("Hero_Hornet(Clone)");
+        float xDist = this.boss.transform.position.x - hero.transform.position.x;
+        float yDist = this.boss.transform.position.y - hero.transform.position.y;
+        bool facingHero = xDist > 0 ? dir == "Left" : dir == "Right";
+
+        info += $"\nDistance to Hornet: \n";
+        info += $"x: {xDist:F2}, y: {yDist:F2}\n";
+        info += $"Facing Hornet? {facingHero}\n";
 
         return info;
     }
@@ -78,93 +116,98 @@ public class BossInfo
     {
         string info = "";
 
-        FsmState activeState = this.fsm.Fsm.ActiveState;
-
-        info += $"AI State: {activeState.Name}\n";
-
-        bool nextChoiceFound = false;
-        int statesChecked = 0;
-        FsmState candidateState = activeState;
-        while (!nextChoiceFound && (statesChecked < this.fsm.FsmStates.Count()))
+        for (int i = 0; i < this.fsmOwners.Count(); i++)
         {
-            break;
-            if (candidateState.Transitions.Count() == 0)
-            {
-                break; // dead end
-            }
-            else if (candidateState.Transitions.Count() == 1)
-            {
-                // only one next choice
-                candidateState = candidateState.Transitions[0].ToFsmState;
-                statesChecked++;
-            }
-            else if (candidateState.Transitions.Count() >= 2)
-            {
-                foreach (FsmStateAction a in candidateState.Actions)
-                {
-                    if (!a.Enabled)
-                    {
-                        continue;
-                    }
+            string entityName = this.fsmOwners[i];
+            FsmState activeState = this.fsmList[i].Fsm.ActiveState;
 
-                    if (a is CompareHP)
-                    {
-                        // determine which path to take from here
-                        // if none of these hit, we keep looking at this State's actions
-                        CompareHP b = a as CompareHP;
-
-                        if ((this.hm.hp == b.integer2.Value) && (b.equal is not null))
-                        {
-                            candidateState = this.TransitionViaEvent(candidateState, b.equal);
-                            continue;
-                        }
-                        else if ((this.hm.hp < b.integer2.Value) && (b.lessThan is not null))
-                        {
-                            candidateState = this.TransitionViaEvent(candidateState, b.lessThan);
-                            continue;
-                        }
-                        else if ((this.hm.hp > b.integer2.Value) && (b.greaterThan is not null))
-                        {
-                            candidateState = this.TransitionViaEvent(candidateState, b.greaterThan);
-                            continue;
-                        }
-                    }
-
-                    if (a is BoolTest)
-                    {
-                        BoolTest b = a as BoolTest;
-                        if ((b.boolVariable.Value) && (b.isTrue is not null))
-                        {
-                            candidateState = this.TransitionViaEvent(candidateState, b.isTrue);
-                            continue;
-                        }
-                        else if ((!b.boolVariable.Value) && (b.isFalse is not null))
-                        {
-                            candidateState = this.TransitionViaEvent(candidateState, b.isFalse);
-                            continue;
-                        }
-                    }
-
-                    if (a is SendRandomEventV2)
-                    {
-                        nextChoiceFound = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        FsmState nextStateWithChoice = candidateState;
-
-        if (nextChoiceFound)
-        {
-            info += $"Next State w/ Choice: {nextStateWithChoice.Name}\n";
+            info += $"{entityName}: {activeState.Name}\n";
         }
 
 
         return info;
     }
 }
+
+        // // bool nextChoiceFound = false;
+        // int statesChecked = 0;
+        // FsmState candidateState = activeState;
+        // while (!nextChoiceFound && (statesChecked < this.fsm.FsmStates.Count()))
+        // {
+        //     break;
+        //     if (candidateState.Transitions.Count() == 0)
+        //     {
+        //         break; // dead end
+        //     }
+        //     else if (candidateState.Transitions.Count() == 1)
+        //     {
+        //         // only one next choice
+        //         candidateState = candidateState.Transitions[0].ToFsmState;
+        //         statesChecked++;
+        //     }
+        //     else if (candidateState.Transitions.Count() >= 2)
+        //     {
+        //         foreach (FsmStateAction a in candidateState.Actions)
+        //         {
+        //             if (!a.Enabled)
+        //             {
+        //                 continue;
+        //             }
+
+        //             if (a is CompareHP)
+        //             {
+        //                 // determine which path to take from here
+        //                 // if none of these hit, we keep looking at this State's actions
+        //                 CompareHP b = a as CompareHP;
+
+        //                 if ((this.hm.hp == b.integer2.Value) && (b.equal is not null))
+        //                 {
+        //                     candidateState = this.TransitionViaEvent(candidateState, b.equal);
+        //                     continue;
+        //                 }
+        //                 else if ((this.hm.hp < b.integer2.Value) && (b.lessThan is not null))
+        //                 {
+        //                     candidateState = this.TransitionViaEvent(candidateState, b.lessThan);
+        //                     continue;
+        //                 }
+        //                 else if ((this.hm.hp > b.integer2.Value) && (b.greaterThan is not null))
+        //                 {
+        //                     candidateState = this.TransitionViaEvent(candidateState, b.greaterThan);
+        //                     continue;
+        //                 }
+        //             }
+
+        //             if (a is BoolTest)
+        //             {
+        //                 BoolTest b = a as BoolTest;
+        //                 if ((b.boolVariable.Value) && (b.isTrue is not null))
+        //                 {
+        //                     candidateState = this.TransitionViaEvent(candidateState, b.isTrue);
+        //                     continue;
+        //                 }
+        //                 else if ((!b.boolVariable.Value) && (b.isFalse is not null))
+        //                 {
+        //                     candidateState = this.TransitionViaEvent(candidateState, b.isFalse);
+        //                     continue;
+        //                 }
+        //             }
+
+        //             if (a is SendRandomEventV2)
+        //             {
+        //                 nextChoiceFound = true;
+        //                 break;
+        //             }
+        //         }
+        //     }
+        // }
+
+        // FsmState nextStateWithChoice = candidateState;
+
+        // if (nextChoiceFound)
+        // {
+        //     info += $"Next State w/ Choice: {nextStateWithChoice.Name}\n";
+        // }
+
 
 // FsmStateAction a;
 // FsmState s;
