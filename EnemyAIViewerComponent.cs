@@ -87,8 +87,7 @@ public class EnemyAIViewerComponent : LocalComponent
         if ((this.bossInfo is null) || !this.bossInfo.boss.activeSelf)
         {
             this.DetermineBoss();
-        }
-        else
+        } else
         {
             this.GetBossInfo();
         }
@@ -132,33 +131,23 @@ public class EnemyAIViewerComponent : LocalComponent
     {
         foreach (string s in EnemyStore.BossNameList)
         {
-            this.manager.Logger.Message(s);
             GameObject b = GameObject.Find(s);
-            if (b is not null)
+            if ((b is not null) && b.activeSelf)
             {
-                if (b.activeSelf)
-                {
-                    if (b is not null)
-                    {
-                        this.bossInfo = new BossInfo(this.manager, b);
-                        return;
-                    }
-                }
+                this.bossInfo = new BossInfo(this.manager, b);
+                return;
             }
         }
-
-        // no bosses here!
-        this.bossInfo = null;
-        this.bossInfoStr = "No Bosses Here";
     }
 
     private void ActiveSceneChanged(Scene from, Scene to)
     {
-        this.DetermineBoss();
+        this.bossInfo = null;
+        this.bossInfoStr = "";
     }
 
     private void SceneLoaded(Scene from, LoadSceneMode mode)
     {
-        this.DetermineBoss();
+        // this.DetermineBoss();
     }
 }
