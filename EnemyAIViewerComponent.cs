@@ -143,7 +143,7 @@ public class EnemyAIViewerComponent : LocalComponent
     private void ActiveSceneChanged(Scene from, Scene to)
     {
         this.bossInfo = null;
-        this.bossInfoStr = "";
+        this.bossInfoStr = "No bosses here...";
     }
 
     private void SceneLoaded(Scene from, LoadSceneMode mode)
